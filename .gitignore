@@ -1,0 +1,27 @@
+# Secrets
+.env
+
+# Java build output
+backend/target/
+*.class
+*.jar
+*.war
+*.log
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/settings.json
+*.suo
+.vs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
