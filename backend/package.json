@@ -1,0 +1,39 @@
+{
+  "name": "job-pulse-backend",
+  "version": "1.0.0",
+  "description": "Job aggregation platform with LLM-powered semantic search",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push",
+    "seed": "tsx src/scripts/seed.ts",
+    "worker": "tsx src/workers/job-fetcher.worker.ts",
+    "fetch": "tsx src/scripts/fetch-jobs.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^5.9.1",
+    "bullmq": "^5.1.9",
+    "dotenv": "^16.4.1",
+    "fast-xml-parser": "^5.7.1",
+    "fastify": "^4.26.0",
+    "ioredis": "^5.3.2",
+    "kafkajs": "^2.2.4",
+    "openai": "^4.28.0",
+    "pg": "^8.11.3",
+    "pgvector": "^0.1.8",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "@types/pg": "^8.11.0",
+    "prisma": "^5.9.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

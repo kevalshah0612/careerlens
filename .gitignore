@@ -1,27 +1,49 @@
-# Secrets
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build outputs ─────────────────────────────────────────────
+dist/
+build/
+*.tsbuildinfo
+
+# ── Environment variables (NEVER commit) ──────────────────────
 .env
+.env.local
+.env.*.local
+.env.production
 
-# Java build output
-backend/target/
-*.class
-*.jar
-*.war
+# ── Logs ──────────────────────────────────────────────────────
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+worker-logs.txt
 
-# Node
-frontend/node_modules/
-frontend/dist/
-frontend/.env
-frontend/.env.local
+# ── Docker volumes / database data ────────────────────────────
+postgres-data/
+pgdata/
+redis-data/
+dump.rdb
 
-# IDE
-.idea/
-*.iml
-.vscode/settings.json
-*.suo
-.vs/
-
-# OS
+# ── OS ────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Testing ───────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Misc ──────────────────────────────────────────────────────
+*.pem
+.cache/
+tmp/
+temp/

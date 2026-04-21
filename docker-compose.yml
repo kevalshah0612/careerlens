@@ -1,72 +1,94 @@
-version: '3.8'
-
 services:
+  # PostgreSQL with pgvector
   postgres:
-    image: pgvector/pgvector:pg16
-    container_name: careerlens-postgres
+    image: ankane/pgvector:latest
+    container_name: jobpulse-postgres
     environment:
-      POSTGRES_DB: careerlens
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jobpulse
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d careerlens"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # Redis
   redis:
     image: redis:7-alpine
-    container_name: careerlens-redis
+    container_name: jobpulse-redis
     ports:
       - "6379:6379"
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
+      timeout: 5s
       retries: 5
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: careerlens-zookeeper
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jobpulse-backend
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: careerlens-kafka
-    depends_on:
-      - zookeeper
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/jobpulse?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      PORT: 3000
+      NODE_ENV: production
     ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_MESSAGE_MAX_BYTES: 2000000
-    healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: careerlens-kafka-ui
+      - "3000:3000"
     depends_on:
-      - kafka
-    ports:
-      - "8090:8080"
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Worker for background job fetching
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jobpulse-worker
+    command: node dist/workers/job-fetcher.worker.js
     environment:
-      KAFKA_CLUSTERS_0_NAME: careerlens
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/jobpulse?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: jobpulse-frontend
+    environment:
+      VITE_API_URL: http://localhost:3000
+      VITE_TENANT_ID: b1e343fb-5e88-403c-afca-d12c78cb7914
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
-  pgdata:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector", schema: "public")]
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  subdomain String   @unique
+  config    Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  jobs      Job[]
+  searches  SavedSearch[]
+  
+  @@map("tenants")
+}
+
+model Job {
+  id              String   @id @default(uuid())
+  tenantId        String   @map("tenant_id")
+  externalId      String   @map("external_id")
+  source          String   // greenhouse, lever, ashby, api
+  
+  // Basic info
+  title           String
+  company         String
+  location        String
+  description     String   @db.Text
+  postedAt        DateTime @map("posted_at")
+  url             String
+  
+  // LLM-extracted structured data
+  requiredSkills  String[] @default([]) @map("required_skills")
+  preferredSkills String[] @default([]) @map("preferred_skills")
+  experienceLevel String?  @map("experience_level") // entry, mid, senior
+  minYears        Int?     @map("min_years")
+  maxYears        Int?     @map("max_years")
+  remote          Boolean  @default(false)
+  visaSponsorship Boolean? @map("visa_sponsorship")
+  employmentType  String?  @map("employment_type")
+  
+  // Vector embedding for semantic search (OpenAI text-embedding-3-small = 1536 dimensions)
+  embedding       Unsupported("vector(1536)")?
+  
+  // Metadata
+  extracted       Boolean  @default(false)
+  dateReliable    Boolean  @default(true) @map("date_reliable")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@unique([externalId, source, tenantId])
+  @@index([tenantId, postedAt])
+  @@index([company])
+  @@index([source])
+  @@index([experienceLevel])
+  @@map("jobs")
+}
+
+model SavedSearch {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  query     String
+  filters   Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@map("saved_searches")
+}
+
+model JobFetchLog {
+  id          String   @id @default(uuid())
+  source      String
+  company     String?
+  totalFetched Int     @map("total_fetched")
+  newJobs     Int      @map("new_jobs")
+  errors      Json?
+  duration    Int      // milliseconds
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([source, createdAt])
+  @@map("job_fetch_logs")
+}
